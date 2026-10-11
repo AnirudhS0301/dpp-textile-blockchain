@@ -3,7 +3,7 @@ message: "If you use this software, please cite the accompanying manuscript."
 title: "Digital Product Passports for Circular Textiles: reference implementation"
 type: software
 license: MIT
-repository-code: "https://github.com/AnirudhS0301/dpp_blockchain"
+repository-code: "https://github.com/AnirudhS0301/dpp-textile-blockchain"
 authors:
   - family-names: Subramanyam
     given-names: Anirudh

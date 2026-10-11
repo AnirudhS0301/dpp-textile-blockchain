@@ -2,7 +2,7 @@
 
 **A Socio-Technical Framework and Prototype Evaluation — reference implementation and reproducibility package**
 
-[![reproduce](https://github.com/AnirudhS0301/dpp_blockchain/actions/workflows/ci.yml/badge.svg)](https://github.com/AnirudhS0301/dpp_blockchain/actions/workflows/ci.yml)
+[![reproduce](https://github.com/AnirudhS0301/dpp-textile-blockchain/actions/workflows/ci.yml/badge.svg)](https://github.com/AnirudhS0301/dpp-textile-blockchain/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
 
@@ -33,8 +33,8 @@ automatically on each run.
 Requires Python 3.11 or newer.
 
 ```bash
-git clone https://github.com/AnirudhS0301/dpp_blockchain.git
-cd dpp_blockchain
+git clone https://github.com/AnirudhS0301/dpp-textile-blockchain.git
+cd dpp-textile-blockchain
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
