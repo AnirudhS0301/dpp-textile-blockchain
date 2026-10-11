@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the accompanying manuscript."
+title: "Digital Product Passports for Circular Textiles: reference implementation"
+type: software
+license: MIT
+repository-code: "https://github.com/AnirudhS0301/dpp_blockchain"
+authors:
+  - family-names: Subramanyam
+    given-names: Anirudh
+    email: asubramany@Constructor.University
+    affiliation: "Constructor University Bremen"
+  - family-names: Fatahi Valilai
+    given-names: Omid
+    orcid: "https://orcid.org/0000-0001-7087-6946"
+    affiliation: "Constructor University Bremen"
+preferred-citation:
+  type: unpublished
+  title: "Digital Product Passports for Circular Textiles: A Socio-Technical Framework and Prototype Evaluation"
+  authors:
+    - family-names: Subramanyam
+      given-names: Anirudh
+    - family-names: Fatahi Valilai
+      given-names: Omid
+  year: 2026
+  notes: "Manuscript under review"
+keywords:
+  - digital product passport
+  - blockchain
+  - circular economy
+  - ESG validation
+  - textiles

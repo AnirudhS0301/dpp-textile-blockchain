@@ -3,7 +3,7 @@ smart_contract.py
 =================
 TokenSmartContract — the central logic component of the DPP framework.
 
-Responsibilities (Section 3.2 / 4.3 of the paper):
+Responsibilities (Sections 3.1-3.2 of the paper):
   1. Receive validated XML data (already parsed into dicts by xml_validator.py)
   2. Evaluate all four ESG dimensions independently with AND-gate logic
   3. Distribute token rewards via the calibrated reward schedule
@@ -16,7 +16,7 @@ ESG Thresholds (ESPR Delegated Act, Table 2):
   - Repairability score    : ≥ 6.0 / 10
   - GOTS certification     : must be active (non-empty certification ID)
 
-Token Reward Schedule (Section 3.1.3):
+Token Reward Schedule (Section 3.0.2):
   - Producer base          : 50 tokens
   - Performance bonus      : up to 18 tokens (6 per dimension above threshold)
   - Citizen repair         : 25 tokens
@@ -29,12 +29,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-# ESPR-aligned ESG thresholds (Table 2 / Section 3.1.2)
+# ESPR-aligned ESG thresholds (Table 2 / Section 3.0.1)
 CO2_THRESHOLD        = 8.5    # kg CO2e per garment (≤)
 RECYCLED_THRESHOLD   = 30.0   # % by weight (≥)
 REPAIR_THRESHOLD     = 6.0    # /10 (≥)
 
-# Token reward schedule (Section 3.1.3)
+# Token reward schedule (Section 3.0.2)
 BASE_PRODUCER_REWARD = 50
 BONUS_PER_DIMENSION  = 6      # max 3 dimensions × 6 = 18
 CITIZEN_REPAIR_REWARD    = 25
@@ -107,7 +107,7 @@ class TokenSmartContract:
     'Stateless between transactions: it holds no memory of prior decisions,
     which ensures that a non-compliant actor cannot accumulate tokens from
     previous compliant transactions to offset a current violation.'
-    — Section 3.2
+    — Section 3.1
     """
 
     # ------------------------------------------------------------------

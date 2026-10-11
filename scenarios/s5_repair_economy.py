@@ -1,5 +1,5 @@
 """
-S5 — Repair Economy Socioeconomic Pricing Model (Section 5.5)
+S5 — Repair Economy Socioeconomic Pricing Model (Section 4.5)
 
 A social economy repair enterprise queries the DPP Repair API for a garment
 with a second fault (seam failure).  Verified material data eliminates the
@@ -11,7 +11,7 @@ MVRP = C_labour + C_parts + C_risk
   DPP-enabled (verified)   : €35 + €8 + €0  = €43.00  (−26%)
 
 This is a best-case computation under the assumption that DPP material data
-is accurate and complete (oracle problem acknowledged in Section 8).
+is accurate and complete (oracle problem acknowledged in Section 6.1).
 
 Expected result:
   mvrp_traditional : 58.0
@@ -32,7 +32,7 @@ from smart_contract import TokenSmartContract
 DPP_ID = "DPP-EU-2024-TXT-00847-A1F9"
 DIVIDER = "─" * 60
 
-# Cost parameters (Table 13 / Section 5.5.2)
+# Cost parameters (Table 3 / Section 4.5)
 C_LABOUR           = 35.00   # 1.5 hrs × €23.33/hr (EU social enterprise rate)
 C_PARTS            = 8.00    # EU-certified lining material
 C_RISK_TRADITIONAL = 15.00   # Uncertainty premium without DPP (industry benchmark)

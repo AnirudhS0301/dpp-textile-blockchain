@@ -1,0 +1,9 @@
+{
+  "_description": "Scenario values reported in the manuscript (Section 4, Tables 3-4). main.py and the test-suite assert that the code reproduces every entry. Do not edit these to make a run pass.",
+  "S1": {"status": "APPROVED", "tokens_issued": 68, "block_index": 4821, "dpp_id": "DPP-EU-2024-TXT-00847-A1F9"},
+  "S2": {"citizen_tokens": 25, "enterprise_tokens": 40},
+  "S3": {"status": "APPROVED", "sustainability_premium_eur": 14.80},
+  "S4": {"status": "REJECTED", "violation_count": 3, "epr_penalty_flag": true},
+  "S5": {"mvrp_traditional": 58.0, "mvrp_dpp": 43.0, "reduction_pct": 26.0},
+  "S6": {"routing": "PREMIUM_RESALE", "donor_tokens": 15, "throughput_factor": 1500}
+}

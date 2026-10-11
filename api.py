@@ -3,7 +3,7 @@ api.py
 ======
 RESTful DPP API (Flask) — Interface Layer of the three-layer architecture.
 
-Endpoints (Section 3.2):
+Endpoints (Section 3.1):
   POST  /api/dpp/register              — Producer DPP registration
   GET   /api/dpp/<dpp_id>              — Citizen consumer query (READ-ONLY)
   GET   /api/dpp/repair-data           — Repair enterprise material profile
@@ -12,7 +12,7 @@ Endpoints (Section 3.2):
   POST  /api/dpp/donation-scan         — Textile bank quality routing
   GET   /api/epr/aggregate             — Local authority EPR data feed
 
-Average API response time: 1.8 seconds on single-node localhost (Section 3.2).
+Average API response time: 1.8 seconds on single-node localhost (Section 3.1).
 """
 
 import time
@@ -58,7 +58,9 @@ def create_app(
         TokenSmartContract evaluates ESG thresholds and approves or rejects.
         """
         t0 = time.time()
-        body = request.get_json(force=True)
+        body = request.get_json(force=True, silent=True)
+        if not isinstance(body, dict):
+            return jsonify({"error": "JSON object body required"}), 400
 
         producer_wallet_id = body.get("producer_wallet_id", "")
         raw_xml = body.get("raw_material_xml")
@@ -104,7 +106,7 @@ def create_app(
         if record is None:
             return jsonify({"error": "DPP not found", "dpp_id": dpp_id}), 404
 
-        # Consumer-facing subset (matches Figure 7 JSON)
+        # Consumer-facing subset (read-only ESG snapshot)
         response = {
             "dpp_id": dpp_id,
             "repairability_score": record.get("repairability_score"),
@@ -163,7 +165,9 @@ def create_app(
     def log_repair():
         """Enterprise logs a completed repair. Dual token reward issued."""
         t0 = time.time()
-        body = request.get_json(force=True)
+        body = request.get_json(force=True, silent=True)
+        if not isinstance(body, dict):
+            return jsonify({"error": "JSON object body required"}), 400
 
         dpp_id             = body.get("dpp_id")
         citizen_wallet     = body.get("citizen_wallet_id", "")
@@ -196,13 +200,20 @@ def create_app(
     def transfer_ownership():
         """Secondhand platform initiates DPP ownership transfer."""
         t0 = time.time()
-        body = request.get_json(force=True)
+        body = request.get_json(force=True, silent=True)
+        if not isinstance(body, dict):
+            return jsonify({"error": "JSON object body required"}), 400
+
+        try:
+            payment_eur = float(body.get("payment_eur", 0))
+        except (TypeError, ValueError):
+            return jsonify({"error": "payment_eur must be numeric"}), 400
 
         result = contract.evaluate_transfer(
             dpp_id=body.get("dpp_id"),
             seller_wallet_id=body.get("seller_wallet_id", ""),
             buyer_wallet_id=body.get("buyer_wallet_id", ""),
-            payment_eur=float(body.get("payment_eur", 0)),
+            payment_eur=payment_eur,
             blockchain=chain,
             wallet_registry=wallets,
         )
@@ -218,7 +229,9 @@ def create_app(
     def donation_scan():
         """Textile bank scans a donated garment for quality routing."""
         t0 = time.time()
-        body = request.get_json(force=True)
+        body = request.get_json(force=True, silent=True)
+        if not isinstance(body, dict):
+            return jsonify({"error": "JSON object body required"}), 400
 
         result = contract.evaluate_donation(
             dpp_id=body.get("dpp_id"),
@@ -229,7 +242,7 @@ def create_app(
         )
 
         response = result.to_dict()
-        response["assessment_time_seconds"] = 1.8   # simulated (Section 3.2)
+        response["assessment_time_seconds"] = 1.8   # simulated (Section 3.1)
         response["response_time_seconds"] = round(time.time() - t0, 3)
         return jsonify(response), result.http_status
 
@@ -240,7 +253,7 @@ def create_app(
     def epr_aggregate():
         """
         EPR authority data feed — aggregate ESG performance across all
-        registered DPPs for local authority fee calculation (Section 3.2).
+        registered DPPs for local authority fee calculation (Section 3.1).
         """
         records = {}
         for dpp_id in chain._dpp_registry:
@@ -275,4 +288,4 @@ def create_app(
 if __name__ == "__main__":
     app = create_app()
     print("DPP Blockchain API running on http://localhost:5000")
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    app.run(host="127.0.0.1", port=5000, debug=False)

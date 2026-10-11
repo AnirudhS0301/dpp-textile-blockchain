@@ -1,7 +1,7 @@
 """
 xml_validator.py
 ================
-XML schema validation for the three DPP payload types (Section 3.2 / 4.1).
+XML schema validation for the three DPP payload types (Section 3.1).
 
 Three schemas:
   RawMaterialRecord  — upstream material composition and certification data

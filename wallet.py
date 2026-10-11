@@ -7,7 +7,7 @@ Each actor (producer, citizen, repair enterprise, social organisation,
 local authority) holds a public/private key pair.  DPP write transactions
 require a valid RSA-2048 digital signature from the initiating actor's
 private key, verified against their registered public key before block
-inclusion (Section 3.2 of the paper).
+inclusion (Section 3.1 of the paper).
 
 Signature verification averages <50 ms per transaction.
 """

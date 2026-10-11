@@ -1,5 +1,5 @@
 """
-S1 — New Garment Purchase and DPP Activation (Section 5.1)
+S1 — New Garment Purchase and DPP Activation (Section 4.1)
 
 A European textile producer registers a Recycled Polyester Jacket on the
 DPP blockchain.  The TokenSmartContract evaluates all three ESPR ESG

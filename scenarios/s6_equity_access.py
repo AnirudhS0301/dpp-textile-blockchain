@@ -1,12 +1,12 @@
 """
-S6 — Equity Access and Textile Bank Donation Routing (Section 5.6)
+S6 — Equity Access and Textile Bank Donation Routing (Section 4.6)
 
 The second owner (CITIZEN-WALLET-EU-8821) donates the garment to the
 municipal textile bank.  The DPP donation-scan endpoint evaluates the
 garment's current repairability score against the three-tier routing table
 and dispatches it to the correct pathway in 1.8 seconds.
 
-Three-tier routing (Section 4.4.2 / Table 14):
+Three-tier routing (Section 4.6):
   repairability ≥ 7.0 → PREMIUM_RESALE          (max circularity value)
   repairability 5.0–6.9 → SUBSIDISED_REPAIR      (social enterprise repair)
   repairability < 5.0  → RECYCLING_PATHWAY        (material recovery)
@@ -34,14 +34,14 @@ from smart_contract import TokenSmartContract
 DPP_ID  = "DPP-EU-2024-TXT-00847-A1F9"
 DIVIDER = "─" * 60
 
-# Routing thresholds (Table 14)
+# Routing thresholds (Section 4.6)
 ROUTING_TABLE = [
     (7.0,  float("inf"), "PREMIUM_RESALE"),
     (5.0,  6.999,        "SUBSIDISED_REPAIR"),
     (0.0,  4.999,        "RECYCLING_PATHWAY"),
 ]
 
-# Equity and throughput benchmarks (Section 5.6.4)
+# Equity and throughput benchmarks (Section 4.6, Table 4)
 THROUGHPUT_FACTOR   = 1500   # automated DPP routing vs manual processing
 MANUAL_TIME_MINUTES = 45.0
 AUTO_TIME_SECONDS   = 1.8
@@ -75,7 +75,7 @@ def run(chain: Blockchain = None, wallets=None, verbose: bool = True) -> dict:
 
     current_repairability = record.get("repairability_score", 8.3)
     routing_decision      = _route(current_repairability)
-    current_owner         = record.get("owner", "CITIZEN-WALLET-EU-8821")
+    current_owner         = record["owner_wallet"]
 
     if verbose:
         print(f"\n[DPP Donation Scan] POST /api/dpp/donation-scan")

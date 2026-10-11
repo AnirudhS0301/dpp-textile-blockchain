@@ -1,5 +1,5 @@
 """
-S3 — Second-Hand Market Resale via Verified DPP (Section 5.3)
+S3 — Second-Hand Market Resale via Verified DPP (Section 4.3)
 
 After the S2 repair, the original owner lists the garment on a DPP-integrated
 European secondhand platform.  The DPP sustainability premium is computed
@@ -51,7 +51,7 @@ def run(chain: Blockchain = None, wallets=None, verbose: bool = True) -> dict:
     repair_count   = record.get("repair_count", 1)
     repairability  = record.get("repairability_score", 8.1)
 
-    # Premium computation (Section 5.3.3, step 2)
+    # Premium computation (Section 4.3, step 2)
     # Premium = f(CO2 avoided, repair count, repairability) vs baseline €38
     premium = round(LISTING_PRICE - base_price, 2)
     premium_pct = round(premium / base_price * 100, 1)

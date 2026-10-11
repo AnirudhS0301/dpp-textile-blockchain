@@ -1,5 +1,5 @@
 """
-S2 — Citizen Scans DPP and Chooses Repair (Section 5.2)
+S2 — Citizen Scans DPP and Chooses Repair (Section 4.2)
 
 18 months post-purchase, the garment's zipper fails.  The citizen scans
 the GS1 QR code; the DPP API returns the ESG snapshot in 1.2 s.  The
@@ -48,7 +48,7 @@ def run(chain: Blockchain = None, wallets=None, verbose: bool = True) -> dict:
     assert record is not None, f"DPP {DPP_ID} not found — run S1 first"
 
     if verbose:
-        print(f"\n[DPP Query] GET /api/dpp/consumer-query")
+        print(f"\n[DPP Query] GET /api/dpp/<dpp_id>")
         print(f"  dpp_id             : {DPP_ID}")
         print(f"  repairability_score: {record['repairability_score']}")
         print(f"  spare_parts        : {record['spare_parts_available']}")

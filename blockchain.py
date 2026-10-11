@@ -3,10 +3,10 @@ blockchain.py
 =============
 Custom SHA-256 Proof-of-Work blockchain engine for the DPP framework.
 
-Design follows Section 3.2 of the paper:
+Design follows Section 3.1 of the paper:
   - SHA-256 block chaining
   - PoW difficulty: 4 leading zeros
-  - Five-block test chain (indices 4818–4823)
+  - Test chain indexed from 4818 (paper Section 3.1 reports indices 4818-4823)
   - Block #4821 is the primary DPP record block
 """
 

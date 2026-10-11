@@ -1,5 +1,5 @@
 """
-S4 — Multidimensional ESG Compliance Failure (Section 5.4)
+S4 — Multidimensional ESG Compliance Failure (Section 4.4)
 
 A fast-fashion supplier attempts to register a synthetic jacket that fails
 all three ESPR threshold dimensions simultaneously.  The TokenSmartContract
@@ -7,7 +7,7 @@ raises a compound rejection in 0.4 seconds with zero human intervention.
 No block is mined; no DPP ID is issued; the EPR penalty flag is dispatched.
 
 This scenario runs on a FRESH blockchain instance (isolated from S1–S3)
-as specified in Section 3.2 ('each scenario was executed in isolation').
+(Section 3.1, Testing Environment).
 The scenario is repeated 5 times to confirm determinism (all must produce
 identical rejection outcomes).
 
@@ -27,9 +27,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from blockchain import Blockchain
 from wallet import create_default_wallets
 from smart_contract import TokenSmartContract
-from xml_validator import XMLSchemaValidator, build_raw_material_xml, build_production_xml
 
-REPETITIONS = 5   # Section 3.2: repeated 5 times for determinism
+REPETITIONS = 5   # Section 3.1: repeated 5 times for determinism
 DIVIDER = "─" * 60
 
 
@@ -42,8 +41,7 @@ def run(chain: Blockchain = None, wallets=None, verbose: bool = True) -> dict:
     fresh_chain = Blockchain()
     fresh_wallets = create_default_wallets()
 
-    validator = XMLSchemaValidator()
-    contract  = TokenSmartContract()
+    contract = TokenSmartContract()
 
     if verbose:
         print(f"\n{'='*60}")
@@ -51,20 +49,10 @@ def run(chain: Blockchain = None, wallets=None, verbose: bool = True) -> dict:
         print(f"{'='*60}")
 
     # ── Non-compliant payloads ─────────────────────────────────────────
-    raw_xml = build_raw_material_xml(
-        product_id="FF-2024-EUR-00009",
-        garment_type="Synthetic Blended Jacket",
-        recycled_polyester_pct=0,
-        organic_cotton_pct=0,
-        elastane_pct=0,
-        origin_region="European Union",
-        gots_certification="",           # ABSENT
-        spare_parts_available=False,
-    )
-    # Override composition to match paper (88% virgin polyester, 12% nylon)
-    # Note: GOTS cert is expired/non-compliant but non-empty — so the contract
-    # only raises the 3 quantitative violations (CO2, recycled, repairability),
-    # matching Table 15 / Section 5.4 of the paper which states "3 violations".
+    # Composition follows the paper (88% virgin polyester, 12% nylon).
+    # The GOTS certificate ID is expired but non-empty. The contract only checks
+    # that a certificate ID is present, so just the 3 quantitative violations
+    # (CO2, recycled content, repairability) are raised, as in Section 4.4.
     raw_data = {
         "product_id": "FF-2024-EUR-00009",
         "garment_type": "Synthetic Blended Jacket",
