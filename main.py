@@ -16,8 +16,12 @@ The process exits 0 only if every check passes.
 
 Architecture
 ------------
-  S1 -> S2 -> S3 -> S5 -> S6  share one blockchain instance (one garment's lifecycle)
-  S4                          uses a fresh, isolated chain
+  Paper Section 3.1: every scenario runs on a fresh blockchain instance, S1-S4
+  are executed five times each (S4 additionally repeats its rejection five
+  times internally) and S5-S6 once. Scenarios that act on an existing garment
+  (S2, S3, S5, S6) first replay their prerequisites silently on the fresh chain.
+  Repeated runs must agree on every deterministic field (hashes and nonces
+  legitimately differ because blocks hash their own timestamp).
 """
 
 import argparse
@@ -34,16 +38,7 @@ for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
         _stream.reconfigure(encoding="utf-8", errors="replace")
 
-from blockchain import Blockchain
-from wallet import create_default_wallets
-from scenarios import (
-    s1_dpp_activation,
-    s2_citizen_repair,
-    s3_secondhand_resale,
-    s4_esg_failure,
-    s5_repair_economy,
-    s6_equity_access,
-)
+from scenarios.lifecycle import run_on_fresh_chain
 
 PAPER_VALUES_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "data", "paper_values.json"
@@ -59,37 +54,52 @@ BANNER = """
 SEPARATOR = "═" * 62
 
 
-def run_all(verbose: bool = True) -> dict:
-    """Run S1-S6 and return their results plus chain metadata."""
-    shared_chain = Blockchain()
-    shared_wallets = create_default_wallets()
+REPEATS = {"S1": 5, "S2": 5, "S3": 5, "S4": 5, "S5": 1, "S6": 1}   # Section 3.1
 
+
+def _stable(value):
+    """Drop fields that legitimately vary between runs (block hashes)."""
+    if isinstance(value, dict):
+        return {k: _stable(v) for k, v in value.items() if k != "block_hash"}
+    if isinstance(value, list):
+        return [_stable(v) for v in value]
+    return value
+
+
+def run_all(verbose: bool = True, repeats: dict = None) -> dict:
+    """
+    Run S1-S6, each on a fresh chain, repeated per `repeats` (default: paper's
+    protocol). Raises AssertionError if repeated runs disagree.
+    """
+    repeats = repeats or REPEATS
     results = {}
     t0_global = time.perf_counter()
 
-    # (key, module, uses the shared chain?)
-    plan = [
-        ("S1", s1_dpp_activation, True),
-        ("S2", s2_citizen_repair, True),
-        ("S3", s3_secondhand_resale, True),
-        ("S4", s4_esg_failure, False),      # isolated chain
-        ("S5", s5_repair_economy, True),
-        ("S6", s6_equity_access, True),
-    ]
-    for key, module, shared in plan:
+    for key in ("S1", "S2", "S3", "S4", "S5", "S6"):
         t0 = time.perf_counter()
-        if shared:
-            results[key] = module.run(chain=shared_chain, wallets=shared_wallets, verbose=verbose)
-        else:
-            results[key] = module.run(chain=None, wallets=None, verbose=verbose)
-        results[key]["_elapsed_s"] = round(time.perf_counter() - t0, 3)
+        runs, chain = [], None
+        n = repeats[key]
+        for i in range(n):
+            # Print the scenario narrative once, for the final repetition.
+            res, chain = run_on_fresh_chain(key, verbose=verbose and i == n - 1)
+            runs.append(res)
+        reference = _stable(runs[0])
+        deterministic = all(_stable(r) == reference for r in runs[1:])
+        assert deterministic, f"{key}: repeated runs disagree"
 
-    results["_chain"] = {
-        "length": len(shared_chain.chain),
-        "first_index": shared_chain.chain[0].index,
-        "last_index": shared_chain.last_block.index,
-        "is_valid": shared_chain.is_valid(),
-    }
+        results[key] = runs[-1]
+        results[key]["_runs"] = n
+        results[key]["_deterministic"] = deterministic
+        results[key]["_elapsed_s"] = round(time.perf_counter() - t0, 3)
+        if key == "S3":
+            # Chain after the manufacture -> retail -> repair -> resale lifecycle.
+            results["_chain"] = {
+                "length": len(chain.chain),
+                "first_index": chain.chain[0].index,
+                "last_index": chain.last_block.index,
+                "is_valid": chain.is_valid(),
+            }
+
     results["_total_elapsed_s"] = round(time.perf_counter() - t0_global, 3)
     return results
 
@@ -127,7 +137,7 @@ def print_summary(results: dict) -> None:
 
     chain = results["_chain"]
     print(f"\n{SEPARATOR}")
-    print(f"  Shared chain      : {chain['length']} blocks "
+    print(f"  S1–S3 chain       : {chain['length']} blocks "
           f"(#{chain['first_index']}–#{chain['last_index']}), valid={chain['is_valid']}")
     print(f"  Total runtime     : {results['_total_elapsed_s']} s")
     print(SEPARATOR)
@@ -182,17 +192,21 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="DPP Blockchain Scenario Runner")
     parser.add_argument("--quiet", action="store_true", help="Suppress per-scenario output")
     parser.add_argument("--json", action="store_true", help="Print results as JSON only")
+    parser.add_argument("--single-run", action="store_true",
+                        help="Run each scenario once instead of the paper's 5x protocol (faster)")
     parser.add_argument("--no-check", action="store_true", help="Skip paper-value validation")
     args = parser.parse_args()
 
+    repeats = {k: 1 for k in REPEATS} if args.single_run else REPEATS
+
     if args.json:
         # Keep stdout machine-readable: no banner, no scenario chatter.
-        results = run_all(verbose=False)
+        results = run_all(verbose=False, repeats=repeats)
         print(json.dumps(results, indent=2, default=str))
         sys.exit(0 if args.no_check or validate_results(results, quiet=True) else 1)
 
     print(BANNER)
-    results = run_all(verbose=not args.quiet)
+    results = run_all(verbose=not args.quiet, repeats=repeats)
     print_summary(results)
     if not args.no_check:
         sys.exit(0 if validate_results(results) else 1)

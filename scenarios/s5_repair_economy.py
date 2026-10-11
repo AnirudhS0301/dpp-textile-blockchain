@@ -27,7 +27,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from blockchain import Blockchain
 from wallet import create_default_wallets
-from smart_contract import TokenSmartContract
+from smart_contract import TokenSmartContract, repair_payload
 
 DPP_ID = "DPP-EU-2024-TXT-00847-A1F9"
 DIVIDER = "─" * 60
@@ -102,6 +102,9 @@ def run(chain: Blockchain = None, wallets=None, verbose: bool = True) -> dict:
         enterprise_wallet_id="REPAIR-EU-TEXTIL-007",
         blockchain=chain,
         wallet_registry=wallets,
+        signature=wallets.sign_transaction(
+            "REPAIR-EU-TEXTIL-007",
+            repair_payload(DPP_ID, repair_data, "CITIZEN-WALLET-EU-8821", "REPAIR-EU-TEXTIL-007")),
     )
 
     if verbose:

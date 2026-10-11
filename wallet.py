@@ -154,6 +154,13 @@ class WalletRegistry:
             return False
         return wallet.verify(payload, signature)
 
+    def sign_transaction(self, wallet_id: str, payload: dict) -> bytes:
+        """Sign `payload` with the named actor's private key (prototype: keys are held in-process)."""
+        wallet = self.get(wallet_id)
+        if wallet is None:
+            raise KeyError(f"Wallet not found: {wallet_id}")
+        return wallet.sign(payload)
+
     def credit(self, wallet_id: str, amount: int) -> None:
         wallet = self.get(wallet_id)
         if wallet is None:
@@ -177,6 +184,7 @@ def create_default_wallets() -> WalletRegistry:
 
     actors = [
         ("PRODUCER-WALLET-EU-001",      "PRODUCER"),
+        ("PRODUCER-EU-FF-009",          "PRODUCER"),      # S4 non-compliant supplier
         ("CITIZEN-WALLET-EU-4412",       "CITIZEN"),
         ("CITIZEN-WALLET-EU-8821",       "CITIZEN"),
         ("REPAIR-EU-001",                "REPAIR_ENTERPRISE"),

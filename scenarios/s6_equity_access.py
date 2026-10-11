@@ -29,7 +29,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from blockchain import Blockchain
 from wallet import create_default_wallets
-from smart_contract import TokenSmartContract
+from smart_contract import TokenSmartContract, donation_payload
 
 DPP_ID  = "DPP-EU-2024-TXT-00847-A1F9"
 DIVIDER = "─" * 60
@@ -99,6 +99,9 @@ def run(chain: Blockchain = None, wallets=None, verbose: bool = True) -> dict:
         social_enterprise_id="TEXTILBANK-EU-003",
         blockchain=chain,
         wallet_registry=wallets,
+        signature=wallets.sign_transaction(
+            current_owner,
+            donation_payload(DPP_ID, current_owner, "TEXTILBANK-EU-003")),
     )
 
     # ── Step 3: CCRI authority flag dispatch ──────────────────────────

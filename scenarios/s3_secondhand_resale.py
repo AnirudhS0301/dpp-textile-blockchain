@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from blockchain import Blockchain
 from wallet import create_default_wallets
-from smart_contract import TokenSmartContract
+from smart_contract import TokenSmartContract, transfer_payload
 
 DPP_ID       = "DPP-EU-2024-TXT-00847-A1F9"
 LISTING_PRICE = 52.80   # €38.00 base + €14.80 DPP premium
@@ -73,6 +73,9 @@ def run(chain: Blockchain = None, wallets=None, verbose: bool = True) -> dict:
         payment_eur=LISTING_PRICE,
         blockchain=chain,
         wallet_registry=wallets,
+        signature=wallets.sign_transaction(
+            "CITIZEN-WALLET-EU-4412",
+            transfer_payload(DPP_ID, "CITIZEN-WALLET-EU-4412", "CITIZEN-WALLET-EU-8821", LISTING_PRICE)),
     )
 
     if verbose:

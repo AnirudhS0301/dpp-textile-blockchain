@@ -25,7 +25,7 @@ automatically on each run.
 - [Framework summary](#framework-summary)
 - [REST API](#rest-api)
 - [Scope and limitations](#scope-and-limitations)
-- [Differences between code and manuscript](#differences-between-code-and-manuscript)
+- [Known inconsistencies in the manuscript](#known-inconsistencies-in-the-manuscript)
 - [Citation](#citation) · [Funding](#funding) · [License](#license)
 
 ## Quick start
@@ -41,13 +41,15 @@ pip install -r requirements-dev.txt
 python main.py
 ```
 
-`main.py` runs S1–S6, prints a summary, and exits `0` only if all 17 paper-value checks pass
-(about 10 s; runtime is dominated by Proof-of-Work mining at difficulty 4).
+`main.py` follows the paper's protocol (§3.1): every scenario runs on a fresh chain, S1–S4 five times each
+(S4 also repeats its rejection five times internally), S5–S6 once, and repeated runs must agree. It exits `0` only if
+all 17 paper-value checks pass. Full protocol takes about 2 minutes (Proof-of-Work at difficulty 4); use `--single-run` for about 30 s.
 
 | Command | Effect |
 |---|---|
 | `python main.py --quiet` | Summary and validation only |
 | `python main.py --json` | Results as JSON on stdout (nothing else); exit code still reflects validation |
+| `python main.py --single-run` | One run per scenario instead of the 5× protocol |
 | `python main.py --no-check` | Skip validation |
 | `pytest` | Regression tests (paper values, AND-logic, chain tamper detection, signatures, API input handling) |
 
@@ -64,7 +66,7 @@ Expected values live in [`data/paper_values.json`](data/paper_values.json) and a
 | S5 | 4.5 | Repair-economy pricing | MVRP €58.00 → €43.00 (**−26 %**) |
 | S6 | 4.6 | Textile-bank donation routing | `PREMIUM_RESALE`, 15 donor tokens, 1500× throughput factor |
 
-S1 → S2 → S3 → S5 → S6 share one chain (one garment's lifecycle); S4 runs on a fresh, isolated chain.
+Each scenario runs on a fresh chain; S2, S3, S5 and S6 silently replay their prerequisites first (`scenarios/lifecycle.py`). The S1–S3 lifecycle chain spans blocks #4818–#4823, as in §3.1.
 
 **On the nonce.** The paper reports 193,847 nonce iterations for block #4821. Blocks hash their own
 wall-clock timestamp, so the nonce is *not* bit-reproducible; only the difficulty target (four leading zeros)
@@ -105,6 +107,8 @@ transparent and free of platform dependencies (paper §3.1).
 
 ## REST API
 
+All write endpoints (`register`, `log-repair`, `transfer-ownership`, `donation-scan`) require a hex RSA signature in the `signature` field over the payload built by the matching `*_payload()` function in `smart_contract.py`; unsigned or forged requests return HTTP 401. See `tests/test_reproduction.py` for a worked example.
+
 ```bash
 python api.py        # serves on http://127.0.0.1:5000 (localhost only, no authentication)
 ```
@@ -112,12 +116,12 @@ python api.py        # serves on http://127.0.0.1:5000 (localhost only, no authe
 | Method | Endpoint | Purpose |
 |---|---|---|
 | `POST` | `/api/dpp/register` | Producer DPP registration |
-| `GET` | `/api/dpp/<dpp_id>` | Citizen ESG snapshot (read-only) |
+| `GET` | `/api/dpp/<dpp_id>` (alias `/dpp/<id>`) | Citizen ESG snapshot (read-only) |
 | `GET` | `/api/dpp/repair-data?dpp_id=…` | Repair-enterprise material profile |
-| `POST` | `/api/dpp/log-repair` | Repair log + dual token reward |
+| `POST` | `/api/dpp/log-repair` (alias `/repair/<id>`) | Repair log + dual token reward |
 | `POST` | `/api/dpp/transfer-ownership` | Secondhand ownership transfer |
 | `POST` | `/api/dpp/donation-scan` | Textile-bank routing |
-| `GET` | `/api/epr/aggregate` | Authority EPR data feed |
+| `GET` | `/api/epr/aggregate` (alias `/epr/aggregate`) | Authority EPR data feed |
 
 ## Scope and limitations
 
@@ -129,18 +133,19 @@ These are proof-of-concept demonstrations, not empirically validated results (pa
 - **Seeded chain.** The chain starts at index 4818 so the primary registration lands on block #4821.
 - **Simulated latencies.** Response times quoted in scenario output (1.2 s, 1.7 s, 1.8 s, 3.1 s) are constants, not measurements.
 - **Assumed economics.** The €14.80 premium (S3) and −26 % MVRP (S5, best case with `C_risk` = 0) follow from assumed inputs.
-- **Signatures.** Wallets can sign and verify, but scenario runners call the contract directly rather than through signed transactions.
-- **API.** Development server only; bound to localhost, no authentication.
+- **Signatures.** Every write is signed by the initiating actor and verified before block inclusion (§3.1). Prototype only: private keys are held in-process by the wallet registry, so the API's `signature` field must be produced with those keys.
+- **API.** Development server only; bound to localhost; actor authentication is by signature only.
 
-## Differences between code and manuscript
+## Known inconsistencies in the manuscript
 
-Listed so reviewers are not surprised:
+The code follows the paper wherever the paper is self-consistent. These items cannot be reconciled in code and are best corrected in the manuscript:
 
-1. §3.1 states every scenario ran on a fresh chain and S1–S3 five times each; here S1–S3, S5, S6 share one chain and only S4 is repeated (×5).
-2. §3.1 describes endpoints `GET /dpp/{id}`, `POST /repair/{id}`, `GET /epr/aggregate`; the implementation uses the `/api/…` routes above.
-3. §3.1 says every DPP write requires a verified signature; see *Signatures* above.
-4. S6 Listing 6 quotes repairability 7.4 and 18.4 kg CO₂ avoided; the code's lifecycle yields 8.3 and 7.0 kg. Both route to `PREMIUM_RESALE`.
-5. The paper describes a five-block chain (4818–4823); the shared chain here has 8 blocks (#4818–#4825).
+1. **S6 Listing 6** gives repairability 7.4 and "2 repairs". After S2 (8.1) and S5 (8.3) the garment's score is **8.3**, which is what the code uses. Routing is `PREMIUM_RESALE` either way.
+2. **CO₂ avoided (18.4 kg)** appears in S2, S3 and S6 records while the repair offsets are 4.2 kg (S2) and 2.8 kg (S5). The code stores 18.4 kg as a fixed reference value (`CO2_AVOIDED_VS_NEW_KG`) and tracks repair offsets separately; the paper does not derive 18.4.
+3. **Chain size:** §3.1 says "five-block chain (indices 4818 to 4823)", which is six indices; the code produces six blocks.
+4. **Mining speed:** §3.1 reports 193,847 nonce iterations for block #4821 and mining under 200 ms. Pure-Python SHA-256 at that iteration count takes longer; timings here are not reproduced.
+5. **S6 actor ID:** the text uses `TEXTILBANK-EU-003`, Listing 6 uses `TEXTILEBANK-EU-001`; the code uses the former.
+6. **Simulated latencies** (1.2 s, 1.7 s, 1.8 s, 3.1 s, 0.4 s) are constants in the scenario scripts, not measurements.
 
 ## Citation
 

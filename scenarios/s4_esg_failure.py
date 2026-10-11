@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from blockchain import Blockchain
 from wallet import create_default_wallets
-from smart_contract import TokenSmartContract
+from smart_contract import TokenSmartContract, registration_payload
 
 REPETITIONS = 5   # Section 3.1: repeated 5 times for determinism
 DIVIDER = "─" * 60
@@ -84,6 +84,9 @@ def run(chain: Blockchain = None, wallets=None, verbose: bool = True) -> dict:
             producer_wallet_id="PRODUCER-EU-FF-009",
             blockchain=fresh_chain,
             wallet_registry=fresh_wallets,
+            signature=fresh_wallets.sign_transaction(
+                "PRODUCER-EU-FF-009",
+                registration_payload(raw_data, prod_data, "PRODUCER-EU-FF-009")),
         )
         results.append(result)
 

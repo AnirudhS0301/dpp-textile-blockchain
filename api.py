@@ -42,6 +42,13 @@ def create_app(
     """
     app = Flask(__name__)
 
+    def _signature(body):
+        """Hex-encoded RSA signature over the transaction payload (see smart_contract.*_payload)."""
+        try:
+            return bytes.fromhex(body.get("signature", ""))
+        except (TypeError, ValueError):
+            return None
+
     # Shared singletons
     chain    = blockchain      or Blockchain()
     wallets  = wallet_registry or create_default_wallets()
@@ -88,6 +95,7 @@ def create_app(
             producer_wallet_id=producer_wallet_id,
             blockchain=chain,
             wallet_registry=wallets,
+            signature=_signature(body),
         )
 
         response = result.to_dict()
@@ -99,6 +107,7 @@ def create_app(
     # GET /api/dpp/<dpp_id>  (citizen consumer query, READ-ONLY)
     # ──────────────────────────────────────────────────────────────────
     @app.route("/api/dpp/<dpp_id>", methods=["GET"])
+    @app.route("/dpp/<dpp_id>", methods=["GET"])          # paper Section 3.1 route
     def get_dpp(dpp_id: str):
         """Return full ESG snapshot for a registered DPP (citizen-facing)."""
         t0 = time.time()
@@ -162,14 +171,15 @@ def create_app(
     # POST /api/dpp/log-repair
     # ──────────────────────────────────────────────────────────────────
     @app.route("/api/dpp/log-repair", methods=["POST"])
-    def log_repair():
+    @app.route("/repair/<product_id>", methods=["POST"])   # paper Section 3.1 route
+    def log_repair(product_id=None):
         """Enterprise logs a completed repair. Dual token reward issued."""
         t0 = time.time()
         body = request.get_json(force=True, silent=True)
         if not isinstance(body, dict):
             return jsonify({"error": "JSON object body required"}), 400
 
-        dpp_id             = body.get("dpp_id")
+        dpp_id             = body.get("dpp_id") or product_id
         citizen_wallet     = body.get("citizen_wallet_id", "")
         enterprise_wallet  = body.get("enterprise_wallet_id", "")
         repair_data        = {
@@ -187,6 +197,7 @@ def create_app(
             enterprise_wallet_id=enterprise_wallet,
             blockchain=chain,
             wallet_registry=wallets,
+            signature=_signature(body),
         )
 
         response = result.to_dict()
@@ -216,6 +227,7 @@ def create_app(
             payment_eur=payment_eur,
             blockchain=chain,
             wallet_registry=wallets,
+            signature=_signature(body),
         )
 
         response = result.to_dict()
@@ -239,6 +251,7 @@ def create_app(
             social_enterprise_id=body.get("requester_id", ""),
             blockchain=chain,
             wallet_registry=wallets,
+            signature=_signature(body),
         )
 
         response = result.to_dict()
@@ -250,6 +263,7 @@ def create_app(
     # GET /api/epr/aggregate
     # ──────────────────────────────────────────────────────────────────
     @app.route("/api/epr/aggregate", methods=["GET"])
+    @app.route("/epr/aggregate", methods=["GET"])          # paper Section 3.1 route
     def epr_aggregate():
         """
         EPR authority data feed — aggregate ESG performance across all

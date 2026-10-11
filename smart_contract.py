@@ -41,6 +41,39 @@ CITIZEN_REPAIR_REWARD    = 25
 ENTERPRISE_REPAIR_REWARD = 40
 DONATION_REWARD          = 15
 
+# CO2 avoided by keeping the garment in use versus a new equivalent, as reported
+# in the paper's S2/S3/S6 DPP records (Sections 4.2-4.6). This is a reference
+# value taken from the paper, not derived by the prototype.
+CO2_AVOIDED_VS_NEW_KG = 18.4
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Signed-transaction payloads (Section 3.1: every DPP write requires a valid
+# RSA-2048 signature from the initiating actor, verified before block inclusion)
+# ─────────────────────────────────────────────────────────────────────────────
+# The actor signs exactly these payloads (json, sorted keys). The contract
+# rebuilds the payload from its own arguments and verifies the signature
+# against the initiating wallet's registered public key.
+
+def registration_payload(raw_material, production, producer_wallet_id) -> Dict[str, Any]:
+    return {"tx": "DPP_REGISTRATION", "signer": producer_wallet_id,
+            "raw_material": raw_material, "production": production}
+
+
+def repair_payload(dpp_id, repair_data, citizen_wallet_id, enterprise_wallet_id) -> Dict[str, Any]:
+    return {"tx": "REPAIR_LOGGED", "signer": enterprise_wallet_id, "dpp_id": dpp_id,
+            "repair_data": repair_data, "citizen_wallet_id": citizen_wallet_id}
+
+
+def transfer_payload(dpp_id, seller_wallet_id, buyer_wallet_id, payment_eur) -> Dict[str, Any]:
+    return {"tx": "DPP_OWNERSHIP_TRANSFER", "signer": seller_wallet_id, "dpp_id": dpp_id,
+            "buyer_wallet_id": buyer_wallet_id, "payment_eur": float(payment_eur)}
+
+
+def donation_payload(dpp_id, donor_wallet_id, social_enterprise_id) -> Dict[str, Any]:
+    return {"tx": "TEXTILE_BANK_DONATION", "signer": donor_wallet_id, "dpp_id": dpp_id,
+            "social_enterprise_id": social_enterprise_id}
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Result containers
@@ -77,6 +110,8 @@ class ContractResult:
 
     @property
     def http_status(self) -> int:
+        if self.action == "SIGNATURE_INVALID":
+            return 401
         return 200 if self.status == "APPROVED" else 400
 
     def to_dict(self) -> Dict[str, Any]:
@@ -110,6 +145,22 @@ class TokenSmartContract:
     — Section 3.1
     """
 
+    def __init__(self, require_signature: bool = True):
+        self.require_signature = require_signature
+
+    def _unauthorised(self, wallet_registry, payload, signature) -> Optional[ContractResult]:
+        """Return a REJECTED result unless `signature` verifies for payload['signer']."""
+        if not self.require_signature:
+            return None
+        if signature is None or not wallet_registry.verify_transaction(
+                payload["signer"], payload, signature):
+            return ContractResult(
+                status="REJECTED",
+                action="SIGNATURE_INVALID",
+                metadata={"signer": payload["signer"], "tx": payload["tx"]},
+            )
+        return None
+
     # ------------------------------------------------------------------
     # DPP Registration (S1 / S4)
     # ------------------------------------------------------------------
@@ -121,6 +172,7 @@ class TokenSmartContract:
         producer_wallet_id: str,
         blockchain,
         wallet_registry,
+        signature: Optional[bytes] = None,
     ) -> ContractResult:
         """
         Evaluate a new DPP registration request.
@@ -133,6 +185,14 @@ class TokenSmartContract:
         blockchain   : Blockchain instance
         wallet_registry : WalletRegistry instance
         """
+
+        denied = self._unauthorised(
+            wallet_registry,
+            registration_payload(raw_material, production, producer_wallet_id),
+            signature,
+        )
+        if denied:
+            return denied
 
         violations: List[Violation] = []
 
@@ -191,6 +251,13 @@ class TokenSmartContract:
         dpp_id = f"DPP-EU-2024-TXT-{product_id[-5:]}-A1F9" if len(product_id) >= 5 \
                  else f"DPP-EU-2024-TXT-00847-A1F9"
 
+        if blockchain.get_dpp(dpp_id) is not None:
+            return ContractResult(
+                status="REJECTED",
+                action="DPP_ALREADY_REGISTERED",
+                metadata={"dpp_id": dpp_id},
+            )
+
         block_data = {
             "transaction_type": "DPP_REGISTRATION",
             "dpp_id": dpp_id,
@@ -221,7 +288,8 @@ class TokenSmartContract:
             "material_composition": raw_material.get("material_composition", {}),
             "owner_wallet": producer_wallet_id,
             "repair_count": 0,
-            "co2_avoided_kg": 0.0,
+            "co2_avoided_kg": CO2_AVOIDED_VS_NEW_KG,
+            "repair_co2_offset_total_kg": 0.0,
             "repair_history": [],
             "lifecycle_stage": "RETAIL",
         })
@@ -255,6 +323,7 @@ class TokenSmartContract:
         enterprise_wallet_id: str,
         blockchain,
         wallet_registry,
+        signature: Optional[bytes] = None,
     ) -> ContractResult:
         """
         Validate a completed repair and distribute dual token reward.
@@ -262,6 +331,14 @@ class TokenSmartContract:
         Citizen  → CITIZEN_REPAIR_REWARD  (25 tokens)
         Enterprise → ENTERPRISE_REPAIR_REWARD (40 tokens)
         """
+        denied = self._unauthorised(
+            wallet_registry,
+            repair_payload(dpp_id, repair_data, citizen_wallet_id, enterprise_wallet_id),
+            signature,
+        )
+        if denied:
+            return denied
+
         dpp_record = blockchain.get_dpp(dpp_id)
         if dpp_record is None:
             return ContractResult(
@@ -285,7 +362,8 @@ class TokenSmartContract:
             "citizen": citizen_wallet_id,
         }
         dpp_record["repairability_score"] = new_repairability
-        dpp_record["co2_avoided_kg"] = dpp_record.get("co2_avoided_kg", 0) + co2_offset
+        dpp_record["repair_co2_offset_total_kg"] = (
+            dpp_record.get("repair_co2_offset_total_kg", 0.0) + co2_offset)
         dpp_record["repair_count"] = dpp_record.get("repair_count", 0) + 1
         dpp_record["repair_history"].append(repair_entry)
 
@@ -332,11 +410,20 @@ class TokenSmartContract:
         payment_eur: float,
         blockchain,
         wallet_registry,
+        signature: Optional[bytes] = None,
     ) -> ContractResult:
         """
         Validate and record a DPP ownership transfer (secondhand resale).
         Computes and records the sustainability premium.
         """
+        denied = self._unauthorised(
+            wallet_registry,
+            transfer_payload(dpp_id, seller_wallet_id, buyer_wallet_id, payment_eur),
+            signature,
+        )
+        if denied:
+            return denied
+
         dpp_record = blockchain.get_dpp(dpp_id)
         if dpp_record is None:
             return ContractResult(status="REJECTED", action="DPP_NOT_FOUND")
@@ -396,6 +483,7 @@ class TokenSmartContract:
         social_enterprise_id: str,
         blockchain,
         wallet_registry,
+        signature: Optional[bytes] = None,
     ) -> ContractResult:
         """
         Three-tier routing logic for textile bank quality assessment.
@@ -406,6 +494,14 @@ class TokenSmartContract:
           5.0–6.9 → SUBSIDISED_REPAIR
           < 5.0  → RECYCLING_PATHWAY
         """
+        denied = self._unauthorised(
+            wallet_registry,
+            donation_payload(dpp_id, donor_wallet_id, social_enterprise_id),
+            signature,
+        )
+        if denied:
+            return denied
+
         dpp_record = blockchain.get_dpp(dpp_id)
         if dpp_record is None:
             return ContractResult(status="REJECTED", action="DPP_NOT_FOUND")

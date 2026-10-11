@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from blockchain import Blockchain
 from wallet import create_default_wallets
-from smart_contract import TokenSmartContract
+from smart_contract import TokenSmartContract, registration_payload
 from xml_validator import XMLSchemaValidator, build_raw_material_xml, build_production_xml
 
 DIVIDER = "─" * 60
@@ -89,6 +89,9 @@ def run(chain: Blockchain = None, wallets=None, verbose: bool = True) -> dict:
         producer_wallet_id="PRODUCER-WALLET-EU-001",
         blockchain=chain,
         wallet_registry=wallets,
+        signature=wallets.sign_transaction(
+            "PRODUCER-WALLET-EU-001",
+            registration_payload(rv.parsed_data, pv.parsed_data, "PRODUCER-WALLET-EU-001")),
     )
 
     if verbose:
